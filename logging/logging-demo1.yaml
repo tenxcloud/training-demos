@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: logging-demo1
+    tenxcloud.com/appName: logging
+    tenxcloud.com/svcName: logging-demo1
+  name: logging-demo1
+spec:
+  ports:
+  - name: logging-demo1-0
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    name: logging-demo1
+  type: NodePort
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    name: logging-demo1
+    tenxcloud.com/appName: logging
+    tenxcloud.com/svcName: logging-demo1
+  name: logging-demo1 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: logging-demo1 
+  template:
+    metadata:
+      labels:
+        name: logging-demo1
+        tenxcloud.com/appName: logging
+        tenxcloud.com/svcName: logging-demo1
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - /hello
+        image: index.tenxcloud.com/tenxcloud/hello-world:latest
+        imagePullPolicy: Always
+        name: demo1 
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "100m"
+            memory: 256Mi
+
