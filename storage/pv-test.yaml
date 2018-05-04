@@ -7,7 +7,7 @@ spec:
   - ReadWriteOnce
   capacity:
     storage: 512Mi
-  persistentVolumeReclaimPolicy: Recycle 
+  persistentVolumeReclaimPolicy: Retain 
   rbd:
     image: pv-test
     keyring: /etc/ceph/keyring
