@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+  labels:
+    tenxcloud.com/petsetType: mysql
+  name: mysql-test
+spec:
+  clusterIP: None
+  ports:
+  - name: mysql-test
+    port: 3306
+    protocol: TCP
+    targetPort: 3306
+  selector:
+    tenxcloud.com/petsetName: mysql-test
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-test
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      tenxcloud.com/petsetName: mysql-test
+  serviceName: mysql-test
+  template:
+    metadata:
+      labels:
+        tenxcloud.com/petsetName: mysql-test
+    spec:
+      containers:
+      - args:
+        - --defaults-file=/etc/mysql/my-galera.cnf
+        - --user=root
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: Passw0rd
+        image: 192.168.1.52/tenx_containers/mysql-galera:e2e
+        imagePullPolicy: IfNotPresent
+        name: mysql-test
+        ports:
+        - containerPort: 3306
+          name: mysql-test
+          protocol: TCP
+        - containerPort: 4444
+          name: sst
+          protocol: TCP
+        - containerPort: 4567
+          name: replication
+          protocol: TCP
+        - containerPort: 4568
+          name: ist
+          protocol: TCP
+        resources:
+          limits:
+            memory: 2Gi
+          requests:
+            cpu: 50m
+            memory: 512Mi
+        volumeMounts:
+        - mountPath: /var/lib/
+          name: datadir
+        - mountPath: /etc/mysql
+          name: config
+      initContainers:
+      - args:
+        - --work-dir=/work-dir
+        image: 192.168.1.52/tenx_containers/galera-install:e2e
+        imagePullPolicy: Always
+        name: install
+        volumeMounts:
+        - mountPath: /work-dir
+          name: workdir
+        - mountPath: /etc/mysql
+          name: config
+      - args:
+        - -on-start=/work-dir/on-start.sh
+        - -service=mysql-test
+        command:
+        - /work-dir/peer-finder
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        image: 192.168.1.52/tenx_containers/debian:jessie
+        imagePullPolicy: IfNotPresent
+        name: bootstrap
+        volumeMounts:
+        - mountPath: /work-dir
+          name: workdir
+        - mountPath: /etc/mysql
+          name: config
+      restartPolicy: Always
+      volumes:
+      - emptyDir: {}
+        name: config
+      - emptyDir: {}
+        name: workdir
+  volumeClaimTemplates:
+  - metadata:
+      name: datadir
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 512Mi
+      storageClassName: tenx-rbd0
